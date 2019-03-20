@@ -1,0 +1,3 @@
+[submodule "tun2socks-core/libuv"]
+	path = tun2socks-core/libuv
+	url = https://github.com/wtdcode/libuv

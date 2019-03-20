@@ -1,21 +1,29 @@
-// tun2socks-cli.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
-#include "pch.h"
 #include <iostream>
+#include <string>
+#include <cstdlib>
+#include <Windows.h>
+
+#include "tun2socks.h"
+
+static const char* debug_instance_id = "{AADF77E3-D6C6-4E23-8F97-C0EA19168CC1}";
+
+std::string get_message(int errorMessageID) {
+	if (errorMessageID == 0)
+		return std::string(); //No error message has been recorded
+
+	LPSTR messageBuffer = nullptr;
+	size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
+	std::string message(messageBuffer, size);
+
+	//Free the buffer.
+	LocalFree(messageBuffer);
+
+	return message;
+}
 
 int main()
 {
-    std::cout << "Hello World!\n"; 
+	tun2socks_start(debug_instance_id, strlen(debug_instance_id));
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
