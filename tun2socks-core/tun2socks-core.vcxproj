@@ -128,9 +128,9 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;__WIN32__;_DEBUG;TUN2SOCKSCORE_EXPORTS;_WINDOWS;_WINSOCK_DEPRECATED_NO_WARNINGS;_WIN32_WINNT=0x0A00;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalOptions>/IGNORE:4103 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/IGNORE:4103 /await %(AdditionalOptions)</AdditionalOptions>
       <DisableSpecificWarnings>4103</DisableSpecificWarnings>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
