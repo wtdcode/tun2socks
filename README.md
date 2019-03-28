@@ -31,3 +31,7 @@ Here I provide a sample `tun2socks-cli` to show how to use `tun2socks-core`.
 - Port to MacOS and Linux.
 - Support DNS spoofing and PAC parsing.
 - Profile the program to ensure its performace.
+
+## Credits
+
+[tun2socks](https://github.com/zhuhaow/tun2socks)
