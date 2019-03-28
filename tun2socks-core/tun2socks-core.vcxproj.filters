@@ -282,6 +282,9 @@
     <ClCompile Include="socks5.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tuntap-windows.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lwip\src\include\compat\posix\arpa\inet.h">
@@ -909,6 +912,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="libuv\include\uv-win.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\lwipstack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tuntap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

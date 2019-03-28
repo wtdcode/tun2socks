@@ -12,7 +12,5 @@
 #define DECLSPEC extern "C"
 #endif
 
-typedef unsigned long IPADDR;
-
 DECLSPEC
 void tun2socks_start(const char*, size_t);
