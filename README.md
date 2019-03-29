@@ -6,7 +6,7 @@ The `tun2socks` is a tool which intercepts all traffic at ip layer and reassembl
 
 Only work in Windows and still under heavy development now. Everything may be changed in the future.
 
-Any kind of contributions is highly welcome.
+Any kind of contributions is highly welcome. You can also join the development on the Telegram. [Telegram Group Link](https://t.me/joinchat/HFFokxdMTSOdbL2bKIVhnw).
 
 ## Build
 
