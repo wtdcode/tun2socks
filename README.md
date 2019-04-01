@@ -28,6 +28,8 @@ Here I provide a sample `tun2socks-cli` to show how to use `tun2socks-core`.
 
 ## TODO
 
+- Support UDP.
+- User-friendly API design.
 - Port to MacOS and Linux.
 - Support DNS spoofing and PAC parsing.
 - Profile the program to ensure its performace.
