@@ -130,7 +130,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/IGNORE:4103 /await %(AdditionalOptions)</AdditionalOptions>
       <DisableSpecificWarnings>4103</DisableSpecificWarnings>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
