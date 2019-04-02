@@ -21,41 +21,9 @@
 
 using namespace tun2socks;
 
-static const char* tap_ip = "10.2.3.1";
-static const char* lwip_ip = "10.2.3.2";
-static const char* tap_network = "10.2.3.0";
-static const char* tap_mask = "255.255.255.252";
 
 static HANDLE g_tap_handle = INVALID_HANDLE_VALUE;
 static bool to_read = true;
-
-
-std::string debug_get_message(int errorMessageID) {
-	if (errorMessageID == 0)
-		return std::string(); //No error message has been recorded
-
-	LPSTR messageBuffer = nullptr;
-	size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-
-	std::string message(messageBuffer, size);
-
-	//Free the buffer.
-	LocalFree(messageBuffer);
-
-	return message;
-}
-
-
-IPADDR inet_network(const char* cp) {
-	return ntohl(inet_addr(cp));
-}
-
-std::string get_address_string(u32_t ip) {
-	char buf[160];
-	sprintf_s(buf, 16, "%d.%d.%d.%d", ip & 0xFF, (ip>>8) & 0xFF, (ip>>16) & 0xFF, (ip>>24) & 0xFF);
-	return std::string(buf);
-}
 
 err_t on_recv(std::shared_ptr<Socks5Socket> ctx, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
 	if (err != ERR_OK || p == nullptr) { // p == NULL indicates EOF
@@ -124,10 +92,10 @@ err_t on_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
 	return ERR_OK;
 }
 
-void tun2socks_start(const char* instance_id, size_t len) {
+void tun2socks_start(const TUNAdapter* adapter) {
 	boost::asio::io_context ioctx;
 	boost::asio::io_context::work work(ioctx);
-	auto tctx = std::make_shared<TUNDevice>(ioctx, instance_id);
+	auto tctx = std::make_shared<TUNDevice>(ioctx, *adapter);
 	LWIPStack::getInstance().init(ioctx);
 	auto pcb = LWIPStack::listen_any();	
 	LWIPStack::lwip_tcp_arg(pcb, (void*)(&ioctx));
@@ -138,8 +106,7 @@ void tun2socks_start(const char* instance_id, size_t len) {
 		tctx->do_write(std::move(buffer), p->tot_len, nullptr, nullptr);
 		return ERR_OK;
 	});
-	tctx->open_tun();
-	tctx->tap_set_address(DeviceAddress{inet_addr(tap_ip), inet_addr(tap_network), inet_addr(tap_mask)});
+	tctx->tap_set_address();
 	tctx->start_read([](std::shared_ptr<Request> q) {LWIPStack::getInstance().strand_ip_input(q->buf, [](err_t err) {
 		if(err != ERR_OK)
 			printf("%d\n", err);

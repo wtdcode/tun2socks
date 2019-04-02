@@ -1,23 +1,26 @@
 #pragma once
 
+#include <string_view>
+
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <tap-windows.h>
 #include <lwipstack.h>
-
-typedef uint32_t IPADDR;
+#include <tun2socks.h>
+#include <cstdio>
+#include <cstring> // for memcpy
+#include <map>
 
 namespace tun2socks {
+	inline std::string get_address_string(u32_t ip) {
+		char buf[160];
+		sprintf_s(buf, 16, "%d.%d.%d.%d", ip & 0xFF, (ip >> 8) & 0xFF, (ip >> 16) & 0xFF, (ip >> 24) & 0xFF);
+		return std::string(buf);
+	}
+
 	enum TUNSTATE {
 		CLOSE = 0,
 		OPEN,
 		OPEN_FAILURE
-	};
-
-	struct DeviceAddress {
-		IPADDR ip;
-		IPADDR network;
-		IPADDR mask;
 	};
 
 	struct Request {
@@ -29,19 +32,18 @@ namespace tun2socks {
 	class TUNDevice {
 		
 	public:
-		TUNDevice(boost::asio::io_context&, const std::string&);
+		TUNDevice(boost::asio::io_context&, const TUNAdapter&);
 
-		int tap_set_address(const DeviceAddress&&);
-
-		int open_tun();
+		int tap_set_address();
 
 		void start_read(std::function<void(std::shared_ptr<Request>)>, std::function<void(const boost::system::error_code&)>);
 
 		void do_write(std::unique_ptr<u_char[]>&&, size_t, std::function<void()>, std::function<void(const boost::system::error_code&)>);
 
+
 	private:
-		std::string _instance_id;
-		HANDLE _tun_handle;
+		TUNHANDLE _tun_handle;
+		TUNAdapter _adapter;
 		boost::asio::io_context& _ctx;
 	};
 }
