@@ -26,8 +26,28 @@ The `tun2socks-core` is the core library of the project and is designed to only 
 
 Here I provide a sample `tun2socks-cli` to show how to use `tun2socks-core`.
 
+```C++
+int main()
+{
+	TUNAdapter adapters[32];
+	auto size = get_tuns(adapters, 32); // get all tap drivers in the system. This step is only needed on Windows.
+	if (size == 0)
+		return 0;
+	else {
+		auto adapter = open_tun(&adapters[0]); // open the adapter.
+		adapter->ip = inet_addr(tap_ip);
+		adapter->mask = inet_addr(tap_mask);
+		adapter->network = inet_addr(tap_network);
+		tun2socks_start(adapter); // start tun2socks.
+	}
+}
+```
+
+On Windows you should download [Tap Driver](http://build.openvpn.net/downloads/releases/latest/) frist.
+
 ## TODO
 
+- Configurable SOCKS5 proxy address.
 - Support UDP.
 - User-friendly API design.
 - Port to MacOS and Linux.
