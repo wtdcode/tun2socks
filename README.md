@@ -57,4 +57,4 @@ On Windows you should download [Tap Driver](http://build.openvpn.net/downloads/r
 
 ## Credits
 
-[tun2socks](https://github.com/zhuhaow/tun2socks)
+- [tun2socks](https://github.com/zhuhaow/tun2socks): It provides some basic ideas about how to reassemble packets to a tcp stream.
