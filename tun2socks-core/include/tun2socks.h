@@ -45,4 +45,7 @@ DECLSPEC
 TUNAdapter* open_tun(TUNAdapter* = NULL);
 
 DECLSPEC
+void delete_tun(TUNAdapter*);
+
+DECLSPEC
 void tun2socks_start(const TUNAdapter*);

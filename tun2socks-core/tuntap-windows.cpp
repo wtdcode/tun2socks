@@ -180,8 +180,14 @@ size_t get_tuns(TUNAdapter* buffer, size_t len) {
 }
 
 TUNAdapter* open_tun(TUNAdapter* adapter) {
-	if (adapter == NULL)
-		return NULL;
+	if (adapter == NULL) {
+		TUNAdapter tuns[32];
+		auto size = get_tuns(tuns, 32);
+		if (size == 0)
+			return NULL;
+		else
+			return new TUNAdapter(tuns[0]);
+	}
 	std::stringstream ss;
 	ss << USERMODEDEVICEDIR;
 	ss << adapter->dev_id;
@@ -194,5 +200,10 @@ TUNAdapter* open_tun(TUNAdapter* adapter) {
 		OPEN_ALWAYS,
 		FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_SYSTEM,
 		NULL);
-	return adapter;
+	return new TUNAdapter(*adapter);
+}
+
+void delete_tun(TUNAdapter* adapter) {
+	if (adapter != NULL)
+		delete adapter;
 }
