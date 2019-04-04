@@ -496,6 +496,7 @@
   <ItemGroup>
     <ClInclude Include="include\lwipstack.h" />
     <ClInclude Include="include\socks5.h" />
+    <ClInclude Include="include\socks5_auth.h" />
     <ClInclude Include="include\tap-windows.h" />
     <ClInclude Include="include\tun2socks.h" />
     <ClInclude Include="include\tuntap.h" />

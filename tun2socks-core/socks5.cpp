@@ -21,6 +21,9 @@ namespace tun2socks {
 	PasswordAuth::PasswordAuth(const std::string& username, const std::string& password)
 		: AuthMethod(USERNAME_PASSWORD), _username(username), _password(password), _next(SEND) {}
 
+	PasswordAuth::PasswordAuth(const std::string&& username,const std::string&& password)
+		: AuthMethod(USERNAME_PASSWORD), _username(std::move(username)), _password(std::move(password)), _next(SEND){}
+
 	PasswordAuth::PasswordAuth(PasswordAuth&& o) : AuthMethod(o._method) {
 		_next = o._next;
 		o._next = SEND;
@@ -76,14 +79,14 @@ namespace tun2socks {
 		_next = SEND;
 	}
 
-	Socks5Socket::Socks5Socket(boost::asio::io_context& ctx, const std::string& ip, uint16_t port, std::unique_ptr<AuthMethod>&& auth)
-		: _socket(ctx), _resolver(ctx), _strand(ctx), _proxy_ip(ip), _proxy_port(port), _auth(std::move(auth)), _connected(false), _closed(true) {
+	Socks5Socket::Socks5Socket(boost::asio::io_context& ctx, std::unique_ptr<AuthMethod>&& auth)
+		: _socket(ctx), _resolver(ctx), _strand(ctx),  _auth(std::move(auth)), _connected(false), _closed(true) {
 
 	}
 
-	bool Socks5Socket::connectProxy() {
+	bool Socks5Socket::connectProxy(const std::string& proxy_ip, uint16_t proxy_port) {
 		if (!_connected) {
-			boost::asio::ip::tcp::resolver::query q(_proxy_ip.c_str(), std::to_string(_proxy_port).c_str());
+			boost::asio::ip::tcp::resolver::query q(proxy_ip.c_str(), std::to_string(proxy_port).c_str());
 			auto results = _resolver.resolve(q);
 			auto method = _auth->get_method();
 			if (results.size() == 0)

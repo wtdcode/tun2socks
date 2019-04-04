@@ -920,5 +920,8 @@
     <ClInclude Include="include\tuntap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\socks5_auth.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

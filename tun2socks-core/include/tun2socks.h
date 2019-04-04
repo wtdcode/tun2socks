@@ -12,6 +12,8 @@
 
 #include <cstdint>
 
+#include "socks5_auth.h"
+
 #ifdef __WIN32__
 #include <Windows.h>
 
@@ -24,7 +26,7 @@ typedef HANDLE TUNHANDLE;
 
 typedef uint32_t IPADDR;
 
-struct TUNAdapter {
+typedef struct _TUNAdapter {
 	TUNHANDLE hd;
 #ifdef __WIN32__
 	char dev_id[MAX_LEN + 1];
@@ -34,7 +36,15 @@ struct TUNAdapter {
 	IPADDR ip;
 	IPADDR mask;
 	uint32_t network;
-};
+} TUNAdapter, *PTUNAdapter;
+
+typedef struct _TUN2SOCKSConfig {
+	PTUNAdapter adapter;
+	char socks5_address[256];
+	size_t socks5_address_length;
+	uint16_t socks5_port;
+	PBaseAuth socks5_auth;
+} TUN2SOCKSConfig, *PTUN2SOCKSConfig;
 
 #ifdef __WIN32__
 DECLSPEC
@@ -48,4 +58,23 @@ DECLSPEC
 void delete_tun(TUNAdapter*);
 
 DECLSPEC
-void tun2socks_start(const TUNAdapter*);
+PTUN2SOCKSConfig make_config_with_socks5_no_auth(
+	const TUNAdapter*,
+	const char*, size_t,
+	uint16_t,
+	const SOCKS5NoAuth*
+);
+
+DECLSPEC
+PTUN2SOCKSConfig make_config_with_socks5_password_auth(
+	const TUNAdapter*,
+	const char*, size_t,
+	uint16_t,
+	const SOCKS5UsernamePassword*
+);
+
+DECLSPEC
+void delete_config(PTUN2SOCKSConfig);
+
+DECLSPEC
+void tun2socks_start(const TUN2SOCKSConfig*);

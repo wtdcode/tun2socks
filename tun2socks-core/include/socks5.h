@@ -5,12 +5,9 @@
 #include <boost/bind.hpp>
 #include <memory>
 
-namespace tun2socks {
+#include "socks5_auth.h"
 
-	enum SOCKS5METHOD:u_char {
-		NO_AUTH = 0,
-		USERNAME_PASSWORD = 2
-	};
+namespace tun2socks {
 
 	enum AUTHACTION {
 		SEND = 0,
@@ -46,6 +43,7 @@ namespace tun2socks {
 	class PasswordAuth : public AuthMethod {
 	public:
 		PasswordAuth(const std::string&, const std::string&);
+		PasswordAuth(const std::string&&, const std::string&&);
 		PasswordAuth(PasswordAuth&&);
 		virtual AUTHACTION next();
 		virtual std::unique_ptr<u_char[]> construct_send(size_t&);
@@ -66,8 +64,8 @@ namespace tun2socks {
 		typedef void send_handler(const boost::system::error_code&, std::size_t);
 		typedef void recv_handler(const boost::system::error_code&, std::size_t);
 
-		Socks5Socket(boost::asio::io_context&, const std::string&, uint16_t, std::unique_ptr<AuthMethod>&&);
-		bool connectProxy();
+		Socks5Socket(boost::asio::io_context&, std::unique_ptr<AuthMethod>&&);
+		bool connectProxy(const std::string&, uint16_t);
 		bool connect(const std::string&, uint16_t);
 		void async_send(std::shared_ptr<u_char>, size_t, std::function<send_handler>);
 		void async_recv(std::shared_ptr<u_char>, size_t, std::function<recv_handler>);
@@ -75,11 +73,7 @@ namespace tun2socks {
 		void async_close();
 		
 	private:
-		std::string _proxy_ip;
 		std::unique_ptr<AuthMethod> _auth;
-		unsigned int _proxy_port;
-		size_t buffer_index;
-		std::array<u_char, 256> buffer;
 		boost::asio::ip::tcp::socket _socket;
 		boost::asio::ip::tcp::resolver _resolver;
 		boost::asio::io_service::strand _strand;

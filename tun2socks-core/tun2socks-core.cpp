@@ -21,9 +21,23 @@
 
 using namespace tun2socks;
 
-
 static HANDLE g_tap_handle = INVALID_HANDLE_VALUE;
 static bool to_read = true;
+static const TUN2SOCKSConfig* g_config;
+
+std::unique_ptr<AuthMethod> get_auth_method(const BaseAuth* auth) {
+	auto method = auth->method;
+	if (method == SOCKS5METHOD::NO_AUTH)
+		return std::make_unique<NoAuth>();
+	else if (method == SOCKS5METHOD::USERNAME_PASSWORD) {
+		auto pw_auth = (PSOCKS5UsernamePassword)auth;
+		std::string username(pw_auth->username, pw_auth->username_length);
+		std::string password(pw_auth->password, pw_auth->password_length);
+		return std::make_unique<PasswordAuth>(std::move(username), std::move(password));
+	}
+	else
+		return nullptr;
+}
 
 err_t on_recv(std::shared_ptr<Socks5Socket> ctx, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
 	if (err != ERR_OK || p == nullptr) { // p == NULL indicates EOF
@@ -56,8 +70,11 @@ err_t on_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
 		return ERR_VAL;
 	}
 	auto ioctx = (boost::asio::io_context*)arg;
-	auto s5socket = std::make_shared<Socks5Socket>(*ioctx, "127.0.0.1", 1080, std::move(std::make_unique<NoAuth>(NoAuth{})));
-	if (!s5socket->connectProxy())
+	auto auth = get_auth_method(g_config->socks5_auth);
+	std::string proxy_ip(g_config->socks5_address, g_config->socks5_address_length);
+	auto proxy_port = g_config->socks5_port;
+	auto s5socket = std::make_shared<Socks5Socket>(*ioctx, std::move(auth));
+	if (!s5socket->connectProxy(proxy_ip, proxy_port))
 		return ERR_ABRT;
 	s5socket->connect(get_address_string(newpcb->local_ip.addr), newpcb->local_port);
 	LWIPStack::lwip_tcp_receive(newpcb, [s5socket](void* arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {return on_recv(s5socket, tpcb, p, err); });
@@ -92,10 +109,11 @@ err_t on_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
 	return ERR_OK;
 }
 
-void tun2socks_start(const TUNAdapter* adapter) {
+void tun2socks_start(const TUN2SOCKSConfig* config) {
 	boost::asio::io_context ioctx;
 	boost::asio::io_context::work work(ioctx);
-	auto tctx = std::make_shared<TUNDevice>(ioctx, *adapter);
+	g_config = config;
+	auto tctx = std::make_shared<TUNDevice>(ioctx, *(config->adapter));
 	LWIPStack::getInstance().init(ioctx);
 	auto pcb = LWIPStack::listen_any();	
 	LWIPStack::lwip_tcp_arg(pcb, (void*)(&ioctx));
@@ -116,4 +134,51 @@ void tun2socks_start(const TUNAdapter* adapter) {
 	});
 	ioctx.run();
 	printf("Shouldn't reach here.\n");
+}
+
+
+template<class T>
+PTUN2SOCKSConfig make_config(
+	const TUNAdapter* adapter,
+	const char* address, size_t address_length,
+	uint16_t port,
+	const T* auth
+){
+	if (address_length > 256)
+		return NULL;
+	auto config = new TUN2SOCKSConfig();
+	memcpy(config->adapter, adapter, sizeof(decltype(*adapter)));
+	memcpy(config->socks5_address, address, address_length);
+	config->socks5_port = port;
+	config->socks5_auth = (PBaseAuth)new T(*auth);
+	return config;
+}
+
+PTUN2SOCKSConfig make_config_with_socks5_no_auth(
+	const TUNAdapter* adapter,
+	const char* address, size_t address_length,
+	uint16_t port,
+	const SOCKS5NoAuth* auth
+) {
+	return make_config(adapter, address, address_length, port, auth);
+}
+
+PTUN2SOCKSConfig make_config_with_socks5_password_auth(
+	const TUNAdapter* adapter,
+	const char* address, size_t address_length,
+	uint16_t port,
+	const SOCKS5UsernamePassword* auth
+) {
+	if (auth->username_length >= 256 || auth->password_length >= 256)
+		return NULL;
+	return make_config(adapter, address, address_length, port, auth);
+}
+
+void delete_config(PTUN2SOCKSConfig config) {
+	if (config != NULL) {
+		if (config->socks5_auth != NULL)
+			delete config->socks5_auth;
+		delete config;
+	}
+	g_config = nullptr;
 }
