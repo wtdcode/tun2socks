@@ -186,7 +186,7 @@ TUNAdapter* open_tun(TUNAdapter* adapter) {
 		if (size == 0)
 			return NULL;
 		else
-			return new TUNAdapter(tuns[0]);
+			adapter = &tuns[0];
 	}
 	std::stringstream ss;
 	ss << USERMODEDEVICEDIR;

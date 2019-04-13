@@ -147,6 +147,7 @@ PTUN2SOCKSConfig make_config(
 	if (address_length > 256)
 		return NULL;
 	auto config = new TUN2SOCKSConfig();
+	config->adapter = new TUNAdapter();
 	memcpy(config->adapter, adapter, sizeof(decltype(*adapter)));
 	memcpy(config->socks5_address, address, address_length);
 	config->socks5_port = port;
@@ -176,6 +177,8 @@ PTUN2SOCKSConfig make_config_with_socks5_password_auth(
 
 void delete_config(PTUN2SOCKSConfig config) {
 	if (config != NULL) {
+		if (config->adapter != NULL)
+			delete config->adapter;
 		if (config->socks5_auth != NULL)
 			delete config->socks5_auth;
 		delete config;
