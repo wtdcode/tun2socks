@@ -54,6 +54,7 @@ On Windows you should download [Tap Driver](http://build.openvpn.net/downloads/r
 - Support UDP.
 - User-friendly API design.
 - Port to MacOS and Linux.
+- Robust error handling.
 - Support DNS spoofing and PAC parsing.
 - Profile the program to ensure its performace.
 - Real time statistics.
