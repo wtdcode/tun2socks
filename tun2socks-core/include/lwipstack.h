@@ -3,16 +3,17 @@
 #include <lwip/tcp.h>
 #include <lwip/netif.h>
 #include <lwip/init.h>
+#include <lwip/udp.h>
+#include <lwip/sys.h>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <memory>
 
+#include "tun2socks.h"
+
 namespace tun2socks {
 	class LWIPStack {
 	public:
-		boost::asio::io_context::strand* _strand;
-		netif* _loopback;
-
 		inline static LWIPStack& getInstance() {
 			static LWIPStack _stack;
 			return _stack;
@@ -22,12 +23,24 @@ namespace tun2socks {
 			return tcp_new();
 		}
 
+		inline static udp_pcb* lwip_udp_new() {
+			return udp_new();
+		}
+
 		inline static err_t lwip_tcp_bind(struct tcp_pcb *pcb, const ip_addr_t *ipaddr, u16_t port) {
 			return tcp_bind(pcb, ipaddr, port);
 		}
 
+		inline static err_t lwip_udp_bind(struct udp_pcb* pcb, const ip_addr_t *ipaddr, u16_t port) {
+			return udp_bind(pcb, ipaddr, port);
+		}
+
 		inline static tcp_pcb* lwip_tcp_listen(tcp_pcb* pcb) {
 			return tcp_listen(pcb);
+		}
+
+		inline static err_t lwip_udp_connect(struct udp_pcb *pcb, const ip_addr_t *ipaddr, u16_t port) {
+			return udp_connect(pcb, ipaddr, port);
 		}
 
 		inline static void lwip_tcp_arg(tcp_pcb* pcb, void* arg) {
@@ -45,18 +58,49 @@ namespace tun2socks {
 		inline static void lwip_tcp_recved(tcp_pcb* pcb, u16_t len) {
 			return tcp_recved(pcb, len);
 		}
+		
+		inline static void lwip_udp_timeout(struct udp_pcb* pcb, std::function<std::remove_pointer_t<udp_timeout_fn>> timeout_fn) {
+			return udp_timeout(pcb, timeout_fn);
+		}
 
-		inline static tcp_pcb* listen_any() {
+		inline static void lwip_udp_create(std::function<std::remove_pointer_t<udp_crt_fn>> create_fn) {
+			return udp_create(create_fn);
+		}
+
+		inline static void lwip_udp_set_timeout(udp_pcb* pcb, u32_t timeout) {
+			return udp_set_timeout(pcb, timeout);
+		}
+
+		inline static void lwip_udp_recv(struct udp_pcb *pcb, std::function<std::remove_pointer<udp_recv_fn>::type> recv) {
+			return udp_recv(pcb, recv, NULL);
+		}
+
+		inline static void lwip_udp_remove(struct udp_pcb* pcb) {
+			return udp_remove(pcb);
+		}
+
+		inline static tcp_pcb* tcp_listen_any() {
 			auto pcb = lwip_tcp_new();
 			auto any = ip_addr_any;
 			lwip_tcp_bind(pcb, &any, 0);
 			return lwip_tcp_listen(pcb);
 		}
 
+		inline static udp_pcb* udp_listen_any() {
+			auto pcb = lwip_udp_new();
+			auto any = ip_addr_any;
+			lwip_udp_bind(pcb, &any, 0);
+			return pcb;
+		}
+
 		inline static err_t lwip_tcp_write(struct tcp_pcb *pcb, std::shared_ptr<void> arg, u16_t len, u8_t apiflags) {
 			return tcp_write(pcb, arg.get(), len, apiflags);
 		}
 
+		inline static err_t lwip_udp_send(struct udp_pcb *pcb, struct pbuf *p) {
+			return udp_send(pcb, p);
+		}
+		
 		inline static u32_t lwip_tcp_sndbuf(tcp_pcb* pcb) {
 			return tcp_sndbuf(pcb);
 		}
@@ -69,10 +113,11 @@ namespace tun2socks {
 			return tcp_close(pcb);
 		}
 
-		inline void init(boost::asio::io_context& ctx) {
+		inline void init(boost::asio::io_context& ctx,const TUN2SOCKSConfig& config) {
 			lwip_init();
 			_strand = new boost::asio::io_context::strand(ctx);
 			_loopback = netif_list;
+			_timeout = config.udp_timeout;
 		}
 
 		inline void strand_tcp_write(struct tcp_pcb *pcb, std::shared_ptr<void> arg, u16_t len, u8_t apiflags, std::function<void(err_t)> cb) {
@@ -107,14 +152,25 @@ namespace tun2socks {
 			});
 		}
 
+		inline void strand_udp_remove(udp_pcb* pcb) {
+			_strand->post([pcb]() {LWIPStack::lwip_udp_remove(pcb); });
+		}
+
 		inline void strand_tcp_recved(tcp_pcb* pcb, u16_t len) {
 			_strand->post(boost::bind(&LWIPStack::lwip_tcp_recved, pcb, len));
+		}
+
+		inline void strand_udp_send(udp_pcb* pcb, std::shared_ptr<pbuf> p,  std::function<void(err_t)> cb) {
+			_strand->post([pcb, p, cb]() {
+				auto err = LWIPStack::lwip_udp_send(pcb, p.get());
+				if (cb != nullptr)
+					cb(err);
+			});
 		}
 
 		inline void set_output_function(std::function<std::remove_pointer<netif_output_fn>::type> f) {
 			_loopback->output = f;
 		}
-
 
 		inline ~LWIPStack() {
 			if (_strand != nullptr)
@@ -122,6 +178,10 @@ namespace tun2socks {
 		}
 
 	private:
-		inline LWIPStack() :_strand(nullptr), _loopback(nullptr) {}
+		inline LWIPStack() :_strand(nullptr), _loopback(nullptr), _timeout(0) {}
+	private:
+		boost::asio::io_context::strand* _strand;
+		netif* _loopback;
+		uint32_t _timeout;
 	};
 }
