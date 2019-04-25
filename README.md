@@ -35,7 +35,7 @@ static const char* tap_mask = "255.255.255.252";
 
 static const char* socks5_address = "127.0.0.1";
 static const uint16_t socks5_port = 1080;
-static const uint32_t udp_timeout = 60000; // 6000ms
+static const uint32_t udp_timeout = 60000; // 60000 ms
 
 int main()
 {
