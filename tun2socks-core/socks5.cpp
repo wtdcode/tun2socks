@@ -1,4 +1,4 @@
-#include <socks5.h>
+#include "socks5.h"
 
 namespace tun2socks {
 
@@ -124,10 +124,10 @@ namespace tun2socks {
 			return _connected;
 	}
 
-	bool Socks5Socket::associateUDP() {
+	bool Socks5Socket::associateUDP(uint32_t dst_ip, uint16_t port) {
 		if (_relayed)
 			return _relayed;
-		auto request = _construct_request(COMMAND::UDP_ASSOCIATE, 0, 0);
+		auto request = _construct_request(COMMAND::UDP_ASSOCIATE, dst_ip, port);
 		uint8_t buffer[1600];
 		size_t recved;
 		try {
@@ -139,14 +139,16 @@ namespace tun2socks {
 			_relayed = false;
 			return false;
 		}
-		if (recved < 7 || buffer[0] != '\x05' || buffer[1] != '\x01' || buffer[3] != ADDRESS_TYPE::IPV4) {
+		if (recved < 7 || buffer[0] != '\x05' || buffer[1] != '\x00' || buffer[2] != '\x00' || buffer[3] != ADDRESS_TYPE::IPV4) {
 			_relayed = false;
 			return _relayed;
 		}
-		auto u_bnd_addr = *((uint32_t*)(buffer[4]));
-		auto u_bnd_port = *((uint16_t*)(buffer[8]));
-		_u_bnd = boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(u_bnd_addr)), u_bnd_port);
+		auto u_bnd_addr = *((uint32_t*)(&buffer[4]));
+		auto u_bnd_port = *((uint16_t*)(&buffer[8]));
+		_u_bnd = boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(u_bnd_addr)), ntohs(u_bnd_port));
 		_relayed = true;
+		_u_socket.open(boost::asio::ip::udp::v4());
+		_u_socket.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
 		return _relayed;
 	}
 
@@ -162,6 +164,7 @@ namespace tun2socks {
 		}
 		catch (std::exception& e) {
 			printf("socks5 connect recv:%s\n", e.what());
+			return false;
 		}
 		if (recved >= 7 && buffer[0] == '\x05' && buffer[1] == REPLY::SUCCEED)
 			return true;
@@ -181,10 +184,39 @@ namespace tun2socks {
 		_u_socket.async_receive_from(boost::asio::buffer(buffer.get(), len), _u_bnd, _u_strand.wrap(handler));
 	}
 
+	void Socks5Socket::async_recvfrom(u_char* buf, size_t len, std::function<recv_handler> handler) {
+		_u_socket.async_receive_from(boost::asio::buffer(buf, len), _u_bnd, [buf, len, handler](const boost::system::error_code& err, std::size_t recv_len) {
+			if (err) {
+				handler(err, 0);
+				return;
+			}
+			if (recv_len < 7)
+				return;
+			if (buf[0] != 0 || buf[1] != 0 || buf[2] != 0)
+				return;
+			size_t start = 0;
+			switch ((ADDRESS_TYPE)(buf[3])) {
+			case IPV4:
+				start = 10;
+				break;
+			case DOMAINNAME:
+				start = buf[4] + 7;
+				break;
+			case IPV6:
+				start = recv_len; // we don't support this.
+				break;
+			};
+			if (start == 0 || start >= recv_len)
+				return;
+			memmove(buf, buf + start, recv_len - start);
+			handler(err, recv_len - start);
+		});
+	}
+
 	void Socks5Socket::async_sendto(std::shared_ptr<u_char> buffer, size_t len, uint32_t dst_ip, uint16_t port, std::function<send_handler> handler) {
 		auto buf = std::make_shared<Buffer<u_char>>(std::move(_construct_udp_request(dst_ip, port, buffer.get(), len)));
 		_u_socket.async_send_to(
-			boost::asio::buffer(buf->data(), len),
+			boost::asio::buffer(buf->data(), buf->len()),
 			_u_bnd, 
 			_u_strand.wrap([buf, handler](const boost::system::error_code& err, std::size_t len) {handler(err, len);}));
 	}
@@ -192,7 +224,7 @@ namespace tun2socks {
 	void Socks5Socket::async_sendto(std::shared_ptr<u_char> buffer, size_t len, const std::string& address, uint16_t port, std::function<send_handler> handler) {
 		auto buf = std::make_shared<Buffer<u_char>>(std::move(_construct_udp_request(address, port, buffer.get(), len)));
 		_u_socket.async_send_to(
-			boost::asio::buffer(buf->data(), len),
+			boost::asio::buffer(buf->data(), buf->len()),
 			_u_bnd,
 			_u_strand.wrap([buf, handler](const boost::system::error_code& err, std::size_t len) {handler(err, len); }));
 	}
@@ -203,6 +235,14 @@ namespace tun2socks {
 		_socket.close();
 	}
 
+	void Socks5Socket::udp_close() {
+		if (_relayed) {
+			boost::system::error_code ec;
+			_u_socket.shutdown(boost::asio::ip::udp::socket::shutdown_both, ec);
+			_u_socket.close();
+		}
+	}
+
 	void Socks5Socket::async_close() {
 		if (!_closed) {
 			_closed = true;
@@ -211,6 +251,13 @@ namespace tun2socks {
 				close();
 			});
 		}
+	}
+
+	void Socks5Socket::async_udp_close() {
+		auto self = shared_from_this();
+		_strand.post([this, self]() {
+			udp_close();
+		});
 	}
 
 	Buffer<uint8_t> Socks5Socket::_construct_request(COMMAND cmd,ADDRESS_TYPE type, const uint8_t* address, size_t address_len, uint16_t port) {
@@ -232,7 +279,8 @@ namespace tun2socks {
 		auto len = address.length();
 		if (len > 0xFF)
 			return Buffer<uint8_t>();
-		return _construct_request(cmd, ADDRESS_TYPE::DOMAINNAME, (uint8_t*)address.c_str(), address.length(), port);
+		auto new_address_bytes = (char)(len) + address;
+		return _construct_request(cmd, ADDRESS_TYPE::DOMAINNAME, (uint8_t*)new_address_bytes.c_str(), new_address_bytes.length(), port);
 	}
 
 	Buffer<uint8_t> Socks5Socket::_construct_udp_request(ADDRESS_TYPE type, const uint8_t* address, size_t address_length, uint16_t port, const uint8_t* data, size_t data_len) {

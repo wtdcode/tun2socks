@@ -17,6 +17,7 @@ namespace tun2socks {
 		FAILURE
 	};
 
+	//TODO: Use std::array instead.
 	template<typename T>
 	class Buffer {
 	public:
@@ -116,15 +117,30 @@ namespace tun2socks {
 
 		Socks5Socket(boost::asio::io_context&, std::unique_ptr<AuthMethod>&&);
 		bool connectProxy(const std::string&, uint16_t);
-		bool associateUDP();
+		bool associateUDP(uint32_t, uint16_t);
 		bool connect(const std::string&, uint16_t);
+		template<int BUFFER_SIZE>
+		void async_sendto(std::shared_ptr<std::array<u_char, BUFFER_SIZE>> buffer, uint32_t dst_ip, uint16_t port, std::function<send_handler> handler) {
+			auto buf = std::make_shared<Buffer<u_char>>(std::move(_construct_udp_request(dst_ip, port, buffer->data(), buffer->size())));
+			_u_socket.async_send_to(
+				boost::asio::buffer(buf->data(), buf->len()),
+				_u_bnd,
+				_u_strand.wrap([buf, handler](const boost::system::error_code& err, std::size_t len) { handler(err, len); }));
+		}
 		void async_sendto(std::shared_ptr<u_char>, size_t, uint32_t, uint16_t, std::function<send_handler>);
 		void async_sendto(std::shared_ptr<u_char>, size_t, const std::string&, uint16_t, std::function<send_handler>);
-		void async_recvfrom(std::shared_ptr<u_char>, size_t, std::function<recv_handler>);
+		void async_recvfrom(std::shared_ptr<u_char>, size_t, std::function<recv_handler>); // depreciated
+		template<int BUFFER_SIZE>
+		void async_recvfrom(std::shared_ptr<std::array<u_char, BUFFER_SIZE>> buf, std::function<recv_handler> handler) {
+			_u_socket.async_receive_from(boost::asio::buffer(*buf), _u_bnd, handler);
+		} // depreciated
+		void async_recvfrom(u_char*, size_t, std::function<recv_handler>);
 		void async_send(std::shared_ptr<u_char>, size_t, std::function<send_handler>);
 		void async_recv(std::shared_ptr<u_char>, size_t, std::function<recv_handler>);
 		void close();
+		void udp_close();
 		void async_close();
+		void async_udp_close();
 
 	private:
 		Buffer<uint8_t> _construct_request(COMMAND, ADDRESS_TYPE, const uint8_t*, size_t, uint16_t);
