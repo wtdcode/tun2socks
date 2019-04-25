@@ -44,6 +44,7 @@ typedef struct _TUN2SOCKSConfig {
 	size_t socks5_address_length;
 	uint16_t socks5_port;
 	PBaseAuth socks5_auth;
+	uint32_t udp_timeout;
 } TUN2SOCKSConfig, *PTUN2SOCKSConfig;
 
 #ifdef __WIN32__
