@@ -27,21 +27,37 @@ The `tun2socks-core` is the core library of the project and is designed to only 
 Here I provide a sample `tun2socks-cli` to show how to use `tun2socks-core`.
 
 ```C++
+#include "tun2socks.h"
+
+static const char* tap_ip = "10.2.3.1";
+static const char* tap_network = "10.2.3.0";
+static const char* tap_mask = "255.255.255.252";
+
+static const char* socks5_address = "127.0.0.1";
+static const uint16_t socks5_port = 1080;
+static const uint32_t udp_timeout = 60000; // 6000ms
+
 int main()
 {
-	// get a tun adapter instance.
-	auto adapter = open_tun(); 
-	// set its addresses.
+	// open a tun adapter.
+	// Note: On windows, you need to install a tap driver first.
+	auto adapter = open_tun();
+	// set the address of the adapter.
 	adapter->ip = inet_addr(tap_ip);
 	adapter->mask = inet_addr(tap_mask);
-	// usually equals to `ip & mask`.
-	adapter->network = inet_addr(tap_network); 
-	// we construct a tun2socks config with no-authentication socks proxy.
-	SOCKS5NoAuth auth;
-	auto config = make_config_with_socks5_no_auth(adapter, socks5_address, strlen(socks5_address), 1080, &auth);
-	// start tun2socks.
+	adapter->network = inet_addr(tap_network);
+	// no authentication
+	SOCKS5NoAuth auth{ NO_AUTH };
+	auto config = make_config_with_socks5_no_auth(
+		adapter, 
+		socks5_address, 
+		strlen(socks5_address), 
+		socks5_port, 
+		udp_timeout, 
+		&auth);
+	// start tun2socks
 	tun2socks_start(config);
-	// clean.
+	// clean
 	delete_tun(adapter);
 	delete_config(config);
 }
@@ -51,7 +67,6 @@ On Windows you should download [Tap Driver](http://build.openvpn.net/downloads/r
 
 ## TODO
 
-- Support UDP.
 - User-friendly API design.
 - Port to MacOS and Linux.
 - Robust error handling.
