@@ -63,6 +63,7 @@ PTUN2SOCKSConfig make_config_with_socks5_no_auth(
 	const TUNAdapter*,
 	const char*, size_t,
 	uint16_t,
+	uint32_t,
 	const SOCKS5NoAuth*
 );
 
@@ -71,6 +72,7 @@ PTUN2SOCKSConfig make_config_with_socks5_password_auth(
 	const TUNAdapter*,
 	const char*, size_t,
 	uint16_t,
+	uint32_t,
 	const SOCKS5UsernamePassword*
 );
 

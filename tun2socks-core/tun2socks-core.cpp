@@ -141,8 +141,7 @@ void new_udp_connection(struct udp_pcb* npcb, boost::asio::io_context& ctx) {
 		);
 	auto auth = get_auth_method(g_config->socks5_auth);
 	auto s5socket = std::make_shared<Socks5Socket>(ctx, std::move(auth));
-	//auto timeout = g_config->udp_timeout;
-	auto timeout = 60000;
+	auto timeout = g_config->udp_timeout;
 	LWIPStack::lwip_udp_set_timeout(npcb, timeout);
 	std::string proxy_ip(g_config->socks5_address, g_config->socks5_address_length);
 	auto proxy_port = g_config->socks5_port;
@@ -227,6 +226,7 @@ PTUN2SOCKSConfig make_config(
 	const TUNAdapter* adapter,
 	const char* address, size_t address_length,
 	uint16_t port,
+	uint32_t timeout,
 	const T* auth
 ){
 	if (address_length > 256)
@@ -245,20 +245,22 @@ PTUN2SOCKSConfig make_config_with_socks5_no_auth(
 	const TUNAdapter* adapter,
 	const char* address, size_t address_length,
 	uint16_t port,
+	uint32_t timeout,
 	const SOCKS5NoAuth* auth
 ) {
-	return make_config(adapter, address, address_length, port, auth);
+	return make_config(adapter, address, address_length, port, timeout, auth);
 }
 
 PTUN2SOCKSConfig make_config_with_socks5_password_auth(
 	const TUNAdapter* adapter,
 	const char* address, size_t address_length,
 	uint16_t port,
+	uint32_t timeout,
 	const SOCKS5UsernamePassword* auth
 ) {
 	if (auth->username_length >= 256 || auth->password_length >= 256)
 		return NULL;
-	return make_config(adapter, address, address_length, port, auth);
+	return make_config(adapter, address, address_length, port, timeout, auth);
 }
 
 void delete_config(PTUN2SOCKSConfig config) {

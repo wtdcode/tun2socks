@@ -14,8 +14,8 @@ int main()
 	adapter->ip = inet_addr(tap_ip);
 	adapter->mask = inet_addr(tap_mask);
 	adapter->network = inet_addr(tap_network);
-	SOCKS5NoAuth auth;
-	auto config = make_config_with_socks5_no_auth(adapter, socks5_address, strlen(socks5_address), 1080, &auth);
+	SOCKS5NoAuth auth{ NO_AUTH};
+	auto config = make_config_with_socks5_no_auth(adapter, socks5_address, strlen(socks5_address), 1080, 60000, &auth);
 	tun2socks_start(config);
 	delete_tun(adapter);
 	delete_config(config);
