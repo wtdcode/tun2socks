@@ -49,5 +49,25 @@
 #define TCP_OUTPUT_DEBUG LWIP_DBG_ON
 #define TCP_INPUT_DEBUG LWIP_DBG_ON
 #define MEM_DEBUG LWIP_DBG_ON
-#define MEM_SIZE 512000
+
+/*
+	Memory management.
+*/
+#define MEM_SIZE 2048000
+
+/*
+	Internal pools
+*/
+#define MEMP_NUM_PBUF 8192
+
+#define MEMP_NUM_UDP_PCB 4096
+
+#define MEMP_NUM_TCP_PCB 4096
+
+#define MEMP_NUM_TCP_PCB_LISTEN 16
+
+#define MEMP_NUM_TCP_SEG 8192
+
+#define MEMP_NUM_FRAG_PBUF 4096
+
 #endif
