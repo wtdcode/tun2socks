@@ -74,6 +74,13 @@ On Windows you should download [Tap Driver](http://build.openvpn.net/downloads/r
 - Profile the program to ensure its performace.
 - Real time statistics.
 
+## Known Bugs
+
+- x64 target won't build
+- sometimes crash due to memory allocation failure
+
+Working on these problems 💪.
+
 ## Credits
 
 - [tun2socks](https://github.com/zhuhaow/tun2socks): It provides some basic ideas about how to reassemble packets to a tcp stream.
