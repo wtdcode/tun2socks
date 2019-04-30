@@ -4,10 +4,6 @@ project(tun2socks-core)
 
 option(STATIC_LIB "Build static lib" ON)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 set(coresrc
     "tun2socks-core.cpp"
     "dllmain.cpp"
@@ -40,6 +36,7 @@ set(lwipcore_SRCS
     ${LWIP_DIR}/src/core/tcp_out.c
     ${LWIP_DIR}/src/core/timeouts.c
     ${LWIP_DIR}/src/core/udp.c
+    ${LWIP_DIR}/src/sys_arch.c
 )
 set(lwipcore4_SRCS
     ${LWIP_DIR}/src/core/ipv4/autoip.c
@@ -140,41 +137,51 @@ set(lwipnoapps_SRCS
 # We love C++.
 set_source_files_properties(${lwipnoapps_SRCS} PROPERTIES LANGUAGE CXX)
 
-include_directories(./include)
-include_directories(${LWIP_DIR}/src/include)
-find_package(Boost REQUIRED)
-
-# see https://github.com/Microsoft/vcpkg/blob/master/docs/examples/installing-and-using-packages.md#handling-libraries-without-native-cmake-support
-find_path(BOOST_INCLUDE_DIR boost/asio.hpp)
-include_directories(${BOOST_INCLUDE_DIR})
-
 if(STATIC_LIB)
-    add_library(tun2socks-core STATIC ${coresrc} ${lwipnoapps_SRCS})
+    add_library(${PROJECT_NAME} STATIC ${coresrc} ${lwipnoapps_SRCS})
 else(STATIC_LIB)
-    add_library(tun2socks-core SHARED ${coresrc} ${lwipnoapps_SRCS})
+    add_library(${PROJECT_NAME} SHARED ${coresrc} ${lwipnoapps_SRCS})
 endif(STATIC_LIB)
 
+# Don't export lwip include directories.
+target_include_directories(${PROJECT_NAME} PRIVATE ${LWIP_DIR}/src/include)
+
+target_include_directories(${PROJECT_NAME} PUBLIC ./include)
+add_library(tun2socks::core ALIAS ${PROJECT_NAME})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+                      CXX_STANDARD 17
+                      CXX_EXTENSIONS OFF
+                      CXX_STANDARD_REQUIRED ON
+)
+
+# see https://github.com/Microsoft/vcpkg/blob/master/ports/boost/usage
+#     https://github.com/Microsoft/vcpkg/blob/master/docs/examples/installing-and-using-packages.md#handling-libraries-without-native-cmake-support
+find_package(Boost REQUIRED)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Boost_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+
 if(WIN32)
-    target_sources(tun2socks-core
-                   PUBLIC
+    target_sources(${PROJECT_NAME}
+                   PRIVATE
                    "tuntap-windows.cpp"
     )
-    target_compile_definitions(tun2socks-core
+    target_compile_definitions(${PROJECT_NAME}
                                PUBLIC WIN32
                                PUBLIC __WIN32__
                                PUBLIC _WINDOWS
-                               PUBLIC _WINSOCK_DEPRECATED_NO_WARNINGS
-                               PUBLIC _WIN32_WINNT=0x0A00
-                               PUBLIC BOOST_COROUTINES_NO_DEPRECATION_WARNING
-                               PUBLIC _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+                               PRIVATE _WINSOCK_DEPRECATED_NO_WARNINGS
+                               PRIVATE _WIN32_WINNT=0x0A00
+                               PRIVATE BOOST_COROUTINES_NO_DEPRECATION_WARNING
+                               PRIVATE _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
     )
 
     if(MSVC)
         # Ignore warning C4103: alignment changed after including header, may be due to missing #pragma pack(pop)
         # /IGNOR:4103 not working here.
-        target_compile_options(tun2socks-core PUBLIC "/wd4103")
-        target_link_options(tun2socks-core PUBLIC "/IGNORE:4221 /IGNORE:4006")
+        target_compile_options(${PROJECT_NAME} PRIVATE "/wd4103")
+        target_link_options(${PROJECT_NAME} PRIVATE "/IGNORE:4221 /IGNORE:4006")
     endif(MSVC)
 
-    target_link_libraries(tun2socks-core Ws2_32.lib Iphlpapi.lib)
+    target_link_libraries(${PROJECT_NAME} Ws2_32.lib Iphlpapi.lib)
 endif(WIN32)
