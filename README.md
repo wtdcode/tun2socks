@@ -10,6 +10,8 @@ Any kind of contributions is highly welcome. You can also join the development o
 
 ## Build
 
+Note: The project is being migrated to cmake. It won't depend on the Visual Studio in the future since I'm going to make a cross-platform tun2socks. However, for now, the Visual Studio can still be used to manage the project for various reasons.
+
 Currently the project is a Visual Studio 2017 project and uses `vcpkg` as the package manager.
 
 Firstly, install all dependencies
