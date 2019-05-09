@@ -86,3 +86,4 @@ Working on these problems 💪.
 ## Credits
 
 - [tun2socks](https://github.com/zhuhaow/tun2socks): It provides some basic ideas about how to reassemble packets to a tcp stream.
+- [libtuntap](https://github.com/LaKabane/libtuntap): A good example about how to design tuntap API.
