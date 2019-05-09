@@ -161,6 +161,17 @@ find_package(Boost REQUIRED)
 target_include_directories(${PROJECT_NAME} PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 
+# For tests
+add_subdirectory(3rdparty/catch2)
+enable_testing()
+add_executable(lwip_tests tests/lwip_test.cpp)
+target_include_directories(lwip_tests PRIVATE ${LWIP_DIR}/src/include)
+target_link_libraries(lwip_tests
+    Catch2::Test
+    ${PROJECT_NAME}
+)
+add_test(lwip_basic lwip_tests)
+
 if(WIN32)
     target_sources(${PROJECT_NAME}
                    PRIVATE
