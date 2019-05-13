@@ -14,7 +14,6 @@
 #include <boost/bind.hpp>
 
 #include "tun2socks.h"
-#include "tap-windows.h"
 #include "lwipstack.h"
 #include "socks5.h"
 #include "tuntap.h"
