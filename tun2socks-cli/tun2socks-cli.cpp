@@ -1,4 +1,9 @@
 #include "tun2socks.h"
+#include <cstring>
+
+#ifdef __LINUX__
+#include <arpa/inet.h>
+#endif
 
 static const char* tap_ip = "10.2.3.1";
 static const char* tap_network = "10.2.3.0";

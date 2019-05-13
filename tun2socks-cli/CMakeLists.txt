@@ -24,3 +24,11 @@ if(WIN32)
                                PRIVATE __WIN32__
     )
 endif(WIN32)
+
+if(UNIX)
+    if(Linux)
+        target_compile_definitions(${PROJECT_NAME}
+                PUBLIC LINUX
+                PUBLIC __LINUX__)
+    endif(Linux)
+endif(UNIX)
