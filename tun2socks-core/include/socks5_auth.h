@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+using size_t = std::size_t;
+
 enum SOCKS5METHOD :uint8_t {
 	NO_AUTH = 0,
 	USERNAME_PASSWORD = 2
