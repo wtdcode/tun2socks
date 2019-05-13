@@ -20,9 +20,23 @@
 typedef HANDLE TUNHANDLE;
 
 #define TUN_INVALID_HANDLE INVALID_HANDLE_VALUE;
-#define MAX_LEN 256
 
 #endif
+
+#ifdef __LINUX__
+typedef int HANDLE;
+typedef HANDLE TUNHANDLE;
+#define INVALID_HANDLE_VALUE (-1)
+#define TUN_INVALID_HANDLE INVALID_HANDLE_VALUE
+#endif
+
+#define MAX_LEN 256
+
+#ifndef NULL
+#define NULL (0)
+#endif
+
+using size_t = std::size_t;
 
 typedef uint32_t IPADDR;
 
