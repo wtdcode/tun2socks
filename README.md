@@ -12,7 +12,9 @@ Any kind of contributions is highly welcome. You can also join the development o
 
 Note: The project is being migrated to cmake. It won't depend on the Visual Studio in the future since I'm going to make a cross-platform tun2socks. However, for now, the Visual Studio can still be used to manage the project for various reasons.
 
-Currently the project is a Visual Studio 2017 project and uses `vcpkg` as the package manager.
+### Windows
+
+Currently, the project can be still built by `Visual Studio 2017`, so you can use vcpkg as package manager,
 
 Firstly, install all dependencies
 
@@ -22,6 +24,22 @@ vcpkg install boost
 
 Then compile and run it.
 
+However, if you'd like to use cmake to build the project, don't forget to read [this](https://github.com/Microsoft/vcpkg/blob/master/docs/examples/installing-and-using-packages.md#handling-libraries-without-native-cmake-support).
+
+### Linux
+
+Building on Linux is much easier. Take Debian as an example.
+
+```
+apt install libboost-all-dev -y
+mkdir build
+cd build
+cmake ..
+make
+```
+
+**Note: The version of boost should be higher than 1.66.0.**
+
 ## Usage
 
 The `tun2socks-core` is the core library of the project and is designed to only provide basic functions with C compatibility, so you can construct any interface you like.
@@ -30,6 +48,11 @@ Here I provide a sample `tun2socks-cli` to show how to use `tun2socks-core`.
 
 ```C++
 #include "tun2socks.h"
+#include <cstring>
+
+#ifdef __LINUX__
+#include <arpa/inet.h>
+#endif
 
 static const char* tap_ip = "10.2.3.1";
 static const char* tap_network = "10.2.3.0";
@@ -65,7 +88,9 @@ int main()
 }
 ```
 
-On Windows you should download [Tap Driver](http://build.openvpn.net/downloads/releases/latest/) frist.
+On Windows you should download [Tap Driver](http://build.openvpn.net/downloads/releases/latest/) first.
+
+Then you can manipulate your routing tables as you wish since tun2socks-cli won't touch your routing tables.
 
 ## TODO
 
