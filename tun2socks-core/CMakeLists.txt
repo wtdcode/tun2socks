@@ -6,9 +6,11 @@ option(STATIC_LIB "Build static lib" ON)
 
 set(coresrc
     "tun2socks-core.cpp"
-    "dllmain.cpp"
     "socks5.cpp"
 )
+
+# See https://gitlab.kitware.com/cmake/community/wikis/doc/tutorials/How-To-Write-Platform-Checks
+set(${CMAKE_SYSTEM_NAME} True)
 
 set(LWIP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lwip)
 
@@ -36,7 +38,6 @@ set(lwipcore_SRCS
     ${LWIP_DIR}/src/core/tcp_out.c
     ${LWIP_DIR}/src/core/timeouts.c
     ${LWIP_DIR}/src/core/udp.c
-    ${LWIP_DIR}/src/sys_arch.c
 )
 set(lwipcore4_SRCS
     ${LWIP_DIR}/src/core/ipv4/autoip.c
@@ -173,9 +174,11 @@ target_link_libraries(lwip_tests
 add_test(lwip_basic lwip_tests)
 
 if(WIN32)
+    set_source_files_properties(${LWIP_DIR}/src/sys_arch.c PROPERTIES LANGUAGE CXX)
     target_sources(${PROJECT_NAME}
-                   PRIVATE
-                   "tuntap-windows.cpp"
+                   PRIVATE "tuntap-windows.cpp"
+                   PRIVATE "dllmain.cpp"
+                   PRIVATE ${LWIP_DIR}/src/sys_arch.c
     )
     target_compile_definitions(${PROJECT_NAME}
                                PUBLIC WIN32
@@ -196,3 +199,16 @@ if(WIN32)
 
     target_link_libraries(${PROJECT_NAME} Ws2_32.lib Iphlpapi.lib)
 endif(WIN32)
+
+if(UNIX)
+    if(Linux)
+        target_sources(${PROJECT_NAME}
+                PRIVATE tuntap-linux.cpp
+                PRIVATE ${LWIP_DIR}/src/sys_arch_linux.cpp)
+        target_compile_definitions(${PROJECT_NAME}
+                PUBLIC LINUX
+                PUBLIC __LINUX__)
+        # See https://stackoverflow.com/questions/9723793/undefined-reference-to-boostsystemsystem-category-when-compiling
+        target_link_libraries(${PROJECT_NAME} boost_system pthread)
+    endif(Linux)
+endif(UNIX)
