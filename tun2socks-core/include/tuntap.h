@@ -13,7 +13,7 @@
 namespace tun2socks {
 	inline std::string get_address_string(u32_t ip) {
 		char buf[160];
-		sprintf_s(buf, 16, "%d.%d.%d.%d", ip & 0xFF, (ip >> 8) & 0xFF, (ip >> 16) & 0xFF, (ip >> 24) & 0xFF);
+		snprintf(buf, 16, "%d.%d.%d.%d", ip & 0xFF, (ip >> 8) & 0xFF, (ip >> 16) & 0xFF, (ip >> 24) & 0xFF);
 		return std::string(buf);
 	}
 
@@ -23,11 +23,19 @@ namespace tun2socks {
 		OPEN_FAILURE
 	};
 
+#ifdef __WINDOWS__
 	struct Request {
 		OVERLAPPED overlapped;
 		pbuf* buf;
 		DWORD transfered;
 	};
+#endif
+#ifdef __LINUX__
+	struct Request{
+	    pbuf* buf;
+	    int transfered;
+	};
+#endif
 
 	class TUNDevice {
 		
