@@ -46,6 +46,10 @@ typedef struct _TUNAdapter {
 	char dev_id[MAX_LEN + 1];
 	DWORD index;
 #endif
+#ifdef __LINUX__
+    int ctrl_socket;
+    int flags;
+#endif
 	char dev_name[MAX_LEN + 1];
 	IPADDR ip;
 	IPADDR mask;
