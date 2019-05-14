@@ -95,7 +95,7 @@ Then you can manipulate your routing tables as you wish since tun2socks-cli won'
 ## TODO
 
 - User-friendly API design.
-- Port to MacOS and Linux.
+- Port to MacOS.
 - Robust error handling.
 - Support DNS spoofing and PAC parsing.
 - Profile the program to ensure its performace.
