@@ -44,7 +44,7 @@ namespace tun2socks {
 
 		int tap_set_address();
 
-		void start_read(std::function<void(std::shared_ptr<Request>)>, std::function<void(const boost::system::error_code&)>);
+		void start_read(const std::function<void(std::shared_ptr<Request>)>&, const std::function<void(const boost::system::error_code&)>&);
 
 		void do_write(std::unique_ptr<u_char[]>&&, size_t, std::function<void()>, std::function<void(const boost::system::error_code&)>);
 
@@ -53,5 +53,8 @@ namespace tun2socks {
 		TUNHANDLE _tun_handle;
 		TUNAdapter _adapter;
 		boost::asio::io_context& _ctx;
+#ifdef __LINUX__
+		boost::asio::posix::stream_descriptor _stream;
+#endif
 	};
 }
