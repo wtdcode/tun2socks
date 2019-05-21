@@ -11,6 +11,7 @@
 #endif
 
 #include <cstdint>
+#include <cstddef> // for std::size_t
 
 #include "socks5_auth.h"
 

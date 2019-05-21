@@ -58,7 +58,7 @@ namespace tun2socks {
 		return system(cmd);
 	}
 
-	void TUNDevice::start_read(std::function<void(std::shared_ptr<Request>)> success, std::function<void(const boost::system::error_code&)> fail) {
+	void TUNDevice::start_read(const std::function<void(std::shared_ptr<Request>)>& success,const std::function<void(const boost::system::error_code&)>& fail) {
 		auto q = std::make_shared<Request>();
 		memset(&q->overlapped, 0, sizeof(OVERLAPPED));
 		q->overlapped.hEvent = CreateEventA(NULL, false, false, NULL);

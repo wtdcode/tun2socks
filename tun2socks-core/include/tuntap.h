@@ -23,7 +23,7 @@ namespace tun2socks {
 		OPEN_FAILURE
 	};
 
-#ifdef __WINDOWS__
+#ifdef __WIN32__
 	struct Request {
 		OVERLAPPED overlapped;
 		pbuf* buf;
