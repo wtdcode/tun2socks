@@ -53,6 +53,9 @@
 /*
 	Memory management.
 */
+#define MEM_LIBC_MALLOC 1
+#define MEMP_MEM_MALLOC 1
+
 #define MEM_SIZE 2048000
 
 /*
