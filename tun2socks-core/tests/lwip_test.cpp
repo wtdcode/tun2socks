@@ -18,22 +18,22 @@ void init(){
 TEST_CASE("Test basic lwip functions"){
     init();
     SECTION("Test max udp_pcb"){
-        udp_pcb* u_arr[4096];
-        for(int i = 0; i < 4096; i++){
+        udp_pcb* u_arr[65536];
+        for(int i = 0; i < 65536; i++){
             u_arr[i] = udp_new();
             REQUIRE(u_arr[i] != NULL);
         }
     }
     SECTION("Test max tcp_pcb"){
-        tcp_pcb* t_arr[4096];
-        for(int i = 0;i < 4096; i++){
+        tcp_pcb* t_arr[65536];
+        for(int i = 0;i < 65536; i++){
             t_arr[i] = tcp_new();
             REQUIRE(t_arr[i] != NULL);
         }
     }
     SECTION("Test max pbuf"){
-        pbuf* pbuf_arr[4096];
-        for(int i = 0 ;i < 4096; i++){
+        pbuf* pbuf_arr[65536];
+        for(int i = 0 ;i < 65536; i++){
             pbuf_arr[i] = pbuf_alloc(pbuf_layer::PBUF_TRANSPORT, 1600, pbuf_type::PBUF_RAM);
             REQUIRE(pbuf_arr[i] != NULL);
         }
