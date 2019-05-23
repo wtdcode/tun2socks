@@ -6,6 +6,8 @@
 #include <lwip/udp.h>
 #include <lwip/sys.h>
 #include <lwip/pbuf.h>
+#include <thread>
+#include <chrono>
 
 void init(){
     static bool initialized = false;
@@ -37,5 +39,12 @@ TEST_CASE("Test basic lwip functions"){
             pbuf_arr[i] = pbuf_alloc(pbuf_layer::PBUF_TRANSPORT, 1600, pbuf_type::PBUF_RAM);
             REQUIRE(pbuf_arr[i] != NULL);
         }
+    }
+    SECTION("Test sys_arch"){
+        using namespace std::chrono_literals;
+        auto before = sys_now();
+        std::this_thread::sleep_for(1000ms);
+        auto after = sys_now();
+        REQUIRE( (after - before < 1100 &&after - before > 900) );
     }
 }
