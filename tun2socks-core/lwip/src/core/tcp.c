@@ -905,6 +905,7 @@ tcp_listen_with_backlog_and_err(struct tcp_pcb *pcb, u8_t backlog, err_t *err)
 #endif
   tcp_free(pcb);
 #if LWIP_CALLBACK_API
+  new ((char*)&lpcb->accept) decltype(lpcb->accept)();
   lpcb->accept = tcp_accept_null;
 #endif /* LWIP_CALLBACK_API */
 #if TCP_LISTEN_BACKLOG
