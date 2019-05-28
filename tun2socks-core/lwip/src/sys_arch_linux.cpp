@@ -12,7 +12,7 @@ static long long
 sys_get_ms_longlong(void){
     if(sys_start_time == nullptr)
         sys_init();
-    return (boost::posix_time::microsec_clock::local_time() - *sys_start_time).total_microseconds();
+    return (boost::posix_time::microsec_clock::local_time() - *sys_start_time).total_milliseconds();
 }
 
 u32_t
