@@ -1,0 +1,12 @@
+[submodule "lwip"]
+	path = lwip
+	url = https://github.com/wtdcode/lwip
+[submodule "3rd_party/argparse"]
+	path = 3rd_party/argparse
+	url = https://github.com/p-ranav/argparse
+[submodule "3rd_party/spdlog"]
+	path = 3rd_party/spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "3rd_party/fmt"]
+	path = 3rd_party/fmt
+	url = https://github.com/fmtlib/fmt
