@@ -7,7 +7,7 @@
 #include "lwip/netif.h"
 #include "lwip/tcp.h"
 
-#define CORE_LOCK std::lock_guard gurad(this->core_mtx_)
+#define CORE_LOCK std::lock_guard<std::recursive_mutex> gurad(this->core_mtx_)
 
 namespace toys {
 namespace wrapper {
