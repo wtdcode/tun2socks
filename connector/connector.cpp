@@ -93,6 +93,7 @@ err_t Connector::OnLWIPTCPReceived(void* arg,
     spdlog::trace("Send {} bytes to SOCKS5 client.", p->tot_len);
     this->client_.SendTCPData(std::move(buffer));
     wrapper::LwIP::Instance().tcp_recved(this->tpcb_, p->tot_len);
+    pbuf_free(p);
     return ERR_OK;
 }
 
