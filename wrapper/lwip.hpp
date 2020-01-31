@@ -6,6 +6,7 @@
 #include "lwip/ip.h"
 #include "lwip/netif.h"
 #include "lwip/tcp.h"
+#include "lwip/timeouts.h"
 
 #define CORE_LOCK std::lock_guard<std::recursive_mutex> gurad(this->core_mtx_)
 
@@ -29,6 +30,11 @@ class LwIP {
     void lwip_init() {
         CORE_LOCK;
         return ::lwip_init();
+    }
+
+    void sys_check_timeouts() {
+        CORE_LOCK;
+        return ::sys_check_timeouts();
     }
 
     tcp_pcb* tcp_new() {
