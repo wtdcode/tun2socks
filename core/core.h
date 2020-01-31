@@ -4,7 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
-#include "connector/connector.h"
+#include "connector/connector_table.hpp"
 #include "core/config.h"
 #include "pool/pool.hpp"
 #include "tuntap/tuntap.h"
@@ -20,12 +20,11 @@ class Core : public toys::tuntap::TunTap::Delegate,
           pool_(),
           tuntap_(),
           loopback_(NULL),
-          tlpcb_(NULL),
-          mtx_() {}
+          tlpcb_(NULL) {}
 
     virtual void OnReceived(const uint8_t* data, std::size_t data_len);
     virtual void OnSent(const uint8_t* data, std::size_t data_len);
-    virtual void OnConnectorError(uint64_t id,
+    virtual void OnConnectorError(uint32_t id,
                                   const boost::system::system_error& err);
     int Run();
 
@@ -35,7 +34,6 @@ class Core : public toys::tuntap::TunTap::Delegate,
                               const ip4_addr_t* ipaddr);
     static err_t onLWIPTCPAccept(void* arg, struct tcp_pcb* newpcb, err_t err);
 
-    void closeConnection(uint64_t id);
     void Stop();
 
    private:
@@ -44,9 +42,6 @@ class Core : public toys::tuntap::TunTap::Delegate,
     std::unique_ptr<toys::tuntap::TunTap> tuntap_;
     netif* loopback_;
     tcp_pcb* tlpcb_;
-    std::unordered_map<uint64_t, std::unique_ptr<toys::connector::Connector>>
-        connections_;
-    std::recursive_mutex mtx_;
 };
 }  // namespace core
 }  // namespace toys

@@ -7,13 +7,18 @@
 namespace toys {
 namespace connector {
 
-uint64_t Connector::counter_ = 0;
+uint32_t Connector::counter_ = 0;
 
 void Connector::Start() {
     this->client_.Start();
-    tcp_arg(this->tpcb_, (void*)this);
-    tcp_recv(this->tpcb_, &Connector::OnLWIPTCPReceived);
-    tcp_err(this->tpcb_, &Connector::OnLWIPTCPError);
+    wrapper::LwIP::Instance().tcp_arg(this->tpcb_,
+                                      (void*)((uintptr_t)this->id_));
+    wrapper::LwIP::Instance().tcp_recv(this->tpcb_,
+                                       &Connector::OnLWIPTCPReceivedWrapper);
+    wrapper::LwIP::Instance().tcp_sent(this->tpcb_,
+                                       &Connector::OnLWIPTCPSentWrapper);
+    wrapper::LwIP::Instance().tcp_err(this->tpcb_,
+                                      &Connector::OnLWIPTCPErrorWrapper);
 }
 
 void Connector::Stop() {
@@ -32,13 +37,53 @@ void Connector::OnError(const boost::system::system_error& err) {
     this->mayCallOnError(err);
 }
 
+Connector::~Connector() {
+    if (this->closed)
+        return;
+    else
+        this->doClose();
+}
+
+err_t Connector::OnLWIPTCPReceivedWrapper(void* arg,
+                                          struct tcp_pcb* tpcb,
+                                          struct pbuf* p,
+                                          err_t err) {
+    auto id = (uintptr_t)arg;
+    auto connector = ConnectorTable::Instance().GetConnector(id);
+    if (connector)
+        return connector->OnLWIPTCPReceived(arg, tpcb, p, err);
+    else {
+        spdlog::warn("tcp_recv callback after deconstruction!");
+        return ERR_CLSD;  // We assume that we have closed this connection.
+    }
+}
+
+void Connector::OnLWIPTCPErrorWrapper(void* arg, err_t err) {
+    auto id = (uintptr_t)arg;
+    auto connector = ConnectorTable::Instance().GetConnector(id);
+    if (connector)
+        return connector->OnLWIPTCPError(arg, err);
+}
+
+err_t Connector::OnLWIPTCPSentWrapper(void* arg,
+                                      struct tcp_pcb* tpcb,
+                                      u16_t len) {
+    auto id = (uintptr_t)arg;
+    auto connector = ConnectorTable::Instance().GetConnector(id);
+    if (connector)
+        return connector->OnLWIPTCPSent(arg, tpcb, len);
+    else {
+        spdlog::warn("tcp_sent callback after deconstruction!");
+        return ERR_CLSD;  // We assume that we have closed this connection.
+    }
+}
+
 err_t Connector::OnLWIPTCPReceived(void* arg,
                                    struct tcp_pcb* tpcb,
                                    struct pbuf* p,
                                    err_t err) {
-    auto connector = (Connector*)arg;
     if (p == NULL) {
-        connector->mayCallOnError(
+        this->mayCallOnError(
             boost::asio::error::make_error_code(boost::asio::error::eof));
         return ERR_OK;
     }
@@ -46,13 +91,12 @@ err_t Connector::OnLWIPTCPReceived(void* arg,
     buffer.resize(p->tot_len);
     pbuf_copy_partial(p, &buffer[0], p->tot_len, 0);
     spdlog::trace("Send {} bytes to SOCKS5 client.", p->tot_len);
-    connector->client_.SendTCPData(std::move(buffer));
-    wrapper::LwIP::Instance().tcp_recved(connector->tpcb_, p->tot_len);
+    this->client_.SendTCPData(std::move(buffer));
+    wrapper::LwIP::Instance().tcp_recved(this->tpcb_, p->tot_len);
     return ERR_OK;
 }
 
 void Connector::OnLWIPTCPError(void* arg, err_t err) {
-    auto connector = (Connector*)arg;
     boost::system::error_code code;
     switch (err) {
         case ERR_ABRT:
@@ -79,7 +123,13 @@ void Connector::OnLWIPTCPError(void* arg, err_t err) {
             spdlog::warn("Unhandled LwIP error: {}", err);
             return;
     }
-    connector->mayCallOnError(code);
+    this->mayCallOnError(code);
+}
+
+err_t Connector::OnLWIPTCPSent(void* arg, struct tcp_pcb* tpcb, u16_t len) {
+    boost::asio::post(this->strand_,
+                      boost::bind(&Connector::tryClearQueue, this));
+    return ERR_OK;
 }
 
 void Connector::mayCallOnError(const boost::system::system_error& err) {
@@ -99,6 +149,29 @@ std::shared_ptr<boost::asio::mutable_buffer> Connector::allocateBuffer(
             [&p](boost::asio::mutable_buffer* buffer) {
                 delete (wrapper::pbuf_buffer*)buffer;
             }};
+}
+
+void Connector::tryClearQueue() {
+    while (!this->send_queue_.empty()) {
+        auto& front = this->send_queue_.front();
+        auto data = front.first;
+        auto len = front.second;
+        auto err = wrapper::LwIP::Instance().tcp_output(this->tpcb_);
+        if (err != ERR_OK) {
+            this->OnLWIPTCPError(this, err);
+            break;
+        }
+        err = wrapper::LwIP::Instance().tcp_write(this->tpcb_, data->data(),
+                                                  len, TCP_WRITE_FLAG_COPY);
+        if (err == ERR_OK) {
+            spdlog::trace("Write {} bytes to LwIP TCP.", len);
+            this->send_queue_.pop_front();
+            continue;
+        } else if (err == ERR_MEM) {
+            return;
+        } else
+            this->OnLWIPTCPError(this, err);
+    }
 }
 
 void Connector::doCallOnError(const boost::system::system_error& err) {
@@ -125,14 +198,8 @@ void Connector::doSOCKS5TCPReceived(
     std::size_t len) {
     if (this->closed)
         return;
-    auto err = wrapper::LwIP::Instance().tcp_write(this->tpcb_, data->data(),
-                                                   len, TCP_WRITE_FLAG_COPY);
-    if (err != ERR_OK)
-        this->OnLWIPTCPError(this, err);
-    spdlog::trace("Write {} bytes to LwIP TCP.", len);
-    err = wrapper::LwIP::Instance().tcp_output(this->tpcb_);
-    if (err != ERR_OK)
-        this->OnLWIPTCPError(this, err);
+    this->send_queue_.emplace_back(std::make_pair(data, len));
+    this->tryClearQueue();
 }
 
 void Connector::doClose() {
@@ -143,8 +210,13 @@ void Connector::doClose() {
     wrapper::LwIP::Instance().tcp_err(this->tpcb_, NULL);
     wrapper::LwIP::Instance().tcp_sent(this->tpcb_, NULL);
     wrapper::LwIP::Instance().tcp_recv(this->tpcb_, NULL);
-    wrapper::LwIP::Instance().tcp_close(this->tpcb_);
+    auto err = wrapper::LwIP::Instance().tcp_close(this->tpcb_);
+    if (err != ERR_OK)
+        spdlog::warn("Failed to close pcb at Connector {} with err {}.",
+                     this->id_, err);
+    this->send_queue_.clear();
     this->tpcb_ = NULL;
+    spdlog::debug("Connector {} closed.", this->id_);
 }
 }  // namespace connector
 }

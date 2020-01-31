@@ -1,6 +1,7 @@
 #ifndef TUN2SOCKS_POOL_HPP
 #define TUN2SOCKS_POOL_HPP
 
+#include <spdlog/spdlog.h>
 #include <array>
 #include <thread>
 #include "boost/asio/io_context.hpp"
@@ -58,8 +59,8 @@ class IOContextPool {
             try {
                 ctx.restart();
                 ctx.run();
-            } catch (const boost::system::system_error& err) {
-                // let it go ...
+            } catch (const std::exception& err) {
+                spdlog::warn("Propagated exception: {}.", err.what());
             }
         }
     }

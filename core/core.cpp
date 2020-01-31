@@ -9,20 +9,23 @@ namespace toys {
 namespace core {
 
 void Core::OnReceived(const uint8_t* data, std::size_t data_len) {
+    if (data_len == 0)  // Does that mean EOF???
+        return;
     std::vector<uint8_t> buffer;
     buffer.assign(data, data + data_len);
     auto p = pbuf_alloc(pbuf_layer::PBUF_RAW, data_len, pbuf_type::PBUF_REF);
     p->payload = &buffer[0];
     spdlog::trace("Receive {} bytes from TUN.", p->tot_len);
     {
-        std::lock_guard guard(wrapper::LwIP::Instance().GetLock());
+        std::lock_guard<std::recursive_mutex> guard(
+            wrapper::LwIP::Instance().GetLock());
         this->loopback_->input(p, this->loopback_);
     }
 }
 
 void Core::OnSent(const uint8_t* data, std::size_t data_len) {}
 
-void Core::OnConnectorError(uint64_t id,
+void Core::OnConnectorError(uint32_t id,
                             const boost::system::system_error& err) {
     auto code = err.code();
     if (code == TUN2SOCKSErrorCode::SOCKS5_WRONG_VERSION ||
@@ -34,8 +37,9 @@ void Core::OnConnectorError(uint64_t id,
         code == boost::system::errc::not_enough_memory) {
         spdlog::critical("Critical error : {}, program exits.", err.what());
         this->Stop();
-    } else
-        this->closeConnection(id);
+    } else {
+        connector::ConnectorTable::Instance().EraseConnector(id);
+    }
 }
 
 int Core::Run() {
@@ -64,7 +68,7 @@ int Core::Run() {
     auto pcb = wrapper::LwIP::Instance().tcp_new();
     auto any = ip_addr_any;
     wrapper::LwIP::Instance().tcp_bind(pcb, &any, 0);
-    this->tlpcb_ = tcp_listen(pcb);
+    this->tlpcb_ = wrapper::LwIP::Instance().tcp_listen_wrapper(pcb);
     wrapper::LwIP::Instance().tcp_arg(this->tlpcb_, (void*)this);
     wrapper::LwIP::Instance().tcp_accept(this->tlpcb_, &Core::onLWIPTCPAccept);
     wrapper::LwIP::Instance().tcp_bind_netif(this->tlpcb_, this->loopback_);
@@ -103,37 +107,20 @@ err_t Core::onLWIPTCPAccept(void* arg, struct tcp_pcb* newpcb, err_t err) {
     boost::asio::ip::tcp::endpoint dest(dest_ip, dest_port);
     // For tcp_route.
     wrapper::LwIP::Instance().tcp_bind_netif(newpcb, core->loopback_);
-    auto connector = std::make_unique<toys::connector::Connector>(
+    auto connector = connector::ConnectorTable::MakeConnector(
         core, core->pool_.getIOContext(), core->config_.socks5Endpoint, dest,
         core->config_.method, *core->tuntap_, newpcb);
     spdlog::debug("Accept a new connection: {}:{} -> {}:{} with ID = {}",
                   src.address().to_string(), src.port(),
                   dest.address().to_string(), dest.port(), connector->GetID());
     connector->Start();
-    core->connections_[connector->GetID()] = std::move(connector);
     return ERR_OK;
-}
-
-void Core::closeConnection(uint64_t id) {
-    std::lock_guard guard(this->mtx_);
-    auto result = this->connections_.find(id);
-    if (result == this->connections_.end())
-        return;
-    result->second->Stop();
-    this->connections_.erase(result);
-    spdlog::debug("Connection {} closed.", id);
 }
 
 void Core::Stop() {
     wrapper::LwIP::Instance().tcp_accept(this->tlpcb_, NULL);
     wrapper::LwIP::Instance().tcp_close(this->tlpcb_);
-    std::lock_guard guard(this->mtx_);
-    std::vector<uint64_t> ids;
-    this->tlpcb_ = NULL;
-    for (auto& it : this->connections_)
-        ids.push_back(it.first);
-    for (auto it : ids)
-        this->closeConnection(it);
+    connector::ConnectorTable::Instance().ClearConnectors();
     this->tuntap_->Stop();
     this->pool_.Stop();
 }

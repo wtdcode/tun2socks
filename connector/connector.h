@@ -1,10 +1,13 @@
 #ifndef TUN2SOCKS_CONNECTOR_H
 #define TUN2SOCKS_CONNECTOR_H
 
-#include <cstdint>
-
 #include <boost/bind.hpp>
+#include <cstdint>
+#include <functional>
+#include <list>
+#include <utility>
 #include "allocator/allocator.hpp"
+#include "connector/connector_table.hpp"
 #include "socks5/socks5_auth.h"
 #include "socks5/socks5_client.h"
 #include "tuntap/tuntap.h"
@@ -16,7 +19,7 @@ class Connector : public toys::socks5::SOCKS5Client::Delegate {
    public:
     class Delegate {
        public:
-        virtual void OnConnectorError(uint64_t id,
+        virtual void OnConnectorError(uint32_t id,
                                       const boost::system::system_error& err) {}
     };
 
@@ -40,8 +43,9 @@ class Connector : public toys::socks5::SOCKS5Client::Delegate {
                               boost::placeholders::_1)),
           tun_(tun),
           tpcb_(npcb),
-          closed(false),
-          id_(++counter_) {}
+          id_(++counter_),
+          send_queue_(),
+          closed(false) {}
 
     void Start();
     void Stop();
@@ -51,18 +55,30 @@ class Connector : public toys::socks5::SOCKS5Client::Delegate {
         std::size_t len);
     virtual void OnError(const boost::system::system_error&);
 
-    uint64_t GetID() { return id_; }
+    uint32_t GetID() { return id_; }
+
+    virtual ~Connector();
 
    private:
-    static err_t OnLWIPTCPReceived(void* arg,
-                                   struct tcp_pcb* tpcb,
-                                   struct pbuf* p,
-                                   err_t err);
-    static void OnLWIPTCPError(void* arg, err_t err);
+    static err_t OnLWIPTCPReceivedWrapper(void* arg,
+                                          struct tcp_pcb* tpcb,
+                                          struct pbuf* p,
+                                          err_t err);
+    static void OnLWIPTCPErrorWrapper(void* arg, err_t err);
 
+    static err_t OnLWIPTCPSentWrapper(void* arg,
+                                      struct tcp_pcb* tpcb,
+                                      u16_t len);
+    err_t OnLWIPTCPReceived(void* arg,
+                            struct tcp_pcb* tpcb,
+                            struct pbuf* p,
+                            err_t err);
+    void OnLWIPTCPError(void* arg, err_t err);
+    err_t OnLWIPTCPSent(void* arg, struct tcp_pcb* tpcb, u16_t len);
     void mayCallOnError(const boost::system::system_error&);
     std::shared_ptr<boost::asio::mutable_buffer> allocateBuffer(
         std::size_t suggest);
+    void tryClearQueue();
     void doCallOnError(const boost::system::system_error&);
     void doSOCKS5TCPReceived(
         boost::asio::yield_context y,
@@ -76,9 +92,12 @@ class Connector : public toys::socks5::SOCKS5Client::Delegate {
     toys::socks5::SOCKS5Client client_;
     toys::tuntap::TunTap& tun_;
     tcp_pcb* tpcb_;
-    uint64_t id_;
+    uint32_t id_;
+    std::list<
+        std::pair<std::shared_ptr<boost::asio::mutable_buffer>, std::size_t>>
+        send_queue_;
     bool closed;
-    static uint64_t counter_;
+    static uint32_t counter_;
 };
 }  // namespace connector
 }  // namespace toys

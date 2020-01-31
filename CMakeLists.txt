@@ -33,7 +33,8 @@ set(Pool_SRC
 
 set(Connector_SRC
         connector/connector.h
-        connector/connector.cpp)
+        connector/connector.cpp
+        connector/connector_table.hpp)
 
 set(Core_SRC
         core/core.cpp
